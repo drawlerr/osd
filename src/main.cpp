@@ -31,11 +31,13 @@ void set_cursor(char * cmdbuf) {
 
 void loop() {
     char cmd_buf[CMD_BUF_SIZE];
+
+    wdt_reset();
+
     size_t read = Serial.readBytesUntil(0, cmd_buf, sizeof cmd_buf);
-    if (read <= 1) {
+    if (read == 0) {
         return;
     }
-    wdt_reset();
 
     // make sure it's terminated
     if (read <= CMD_BUF_SIZE-1) {
@@ -50,7 +52,7 @@ void loop() {
      * r - reset
      * c - clear
      */
-    bool err = false;
+    int8_t retcode = 0;
     switch (cmd_buf[0]) {
         case 'p':  // 'print'
             maxosd.writeString(&cmd_buf[1]);
@@ -64,12 +66,17 @@ void loop() {
         case 'h': // 'heartbeat' / no-op
             break;
         case 'm': // 'millis' / uptime
-            Serial.write(millis());
+            Serial.print(millis(), DEC);
+            //retcode = millis();
             break;
-        case '?':
+        case 's': // status
             Serial.print(maxosd.Peek(0xa0), HEX);
+            //retcode = maxosd.Peek(STAT_READ_ADDR);
             break;
-        case '':
+        case 'v': // vm0+vm1 video mode
+            Serial.print(maxosd.Peek(VM0_READ_ADDR), HEX);
+            Serial.write(' ');
+            Serial.print(maxosd.Peek(VM1_READ_ADDR), HEX);
             break;
         case 'r':
             maxosd.reset();
@@ -78,16 +85,12 @@ void loop() {
             maxosd.clear();
             break;
         default:
-            err = true;
+            retcode = 0xff;
     }
     // cmd_executed
     Serial.write(0xff);
     // return value
-    if (err) {
-        Serial.write(1);
-    } else {
-        Serial.write(0);
-    }
+    Serial.write(retcode);
 }
 
 

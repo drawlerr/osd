@@ -15,10 +15,10 @@
 
 
 // this is for Arduino Uno
-#define MAX7456_DATAOUT 11//MOSI
-#define MAX7456_DATAIN  12//MISO
-#define MAX7456_SCK  13//sck
-#define MAX7456SELECT 10//ss (chip select)
+#define MAX7456_DATAOUT MOSI
+#define MAX7456_DATAIN  MISO
+#define MAX7456_SCK  SCK
+#define MAX7456SELECT SS
 #define MAX7456_VSYNC 5// INT0, not used
 /*
 // this is for 2560
@@ -40,6 +40,7 @@
 #define VM0_WRITE_ADDR   0x00
 #define VM0_READ_ADDR   0x80
 #define VM1_WRITE_ADDR   0x01
+#define VM1_READ_ADDR   0x81
 #define CMAL_READ_ADDR  0x8a
 #define CMAL_WRITE_ADDR  0x0a
 #define HOS_READ_ADDR 0x82
@@ -54,8 +55,11 @@
 #define CMDO_READ_ADDR 0xC1
 #define CMDI_READ_ADDR 0x8B
 #define CMDI_WRITE_ADDR 0x0B
-// There is no DMDO write adress
+// There is no DMDO write address
 #define DMDO_READ_ADDR 0xB0
+#define STAT_READ_ADDR 0xA0
+#define OSDBL_READ_ADDR 0xEC
+#define OSDBL_WRITE_ADDR 0x6C
 
 // video mode register 0 bits. Create the pattern by ORing the ones you need.
 #define VIDEO_BUFFER_DISABLE 0x01
@@ -137,8 +141,8 @@ class MAX7456 {
 public:
     MAX7456(); // Constructor
 
-    void Poke(byte adress, byte data);    // write "data" into MAX7456's register with address "adress". Always use Poke and Peek, dont use MAX7456_spi_transfer.
-    byte Peek(byte adress);               // read from the MAX7456's register "address"
+    void Poke(byte address, byte data);    // write "data" into MAX7456's register with address "address". Always use Poke and Peek, dont use MAX7456_spi_transfer.
+    byte Peek(byte address);               // read from the MAX7456's register "address"
     void reset();                         // make a soft reset of the MAX7456, wait until completed, return
     void initialize();                    // initialize default values of the MAX7456 like PAL mode, 16 bit mode, autoincrement, backgnd brightness...
     void begin();                         // initializer: call this once before using the MAX7456. Does the pinModes of the SPI, calls reset()...
@@ -162,6 +166,8 @@ public:
 
     byte ReadDisplay(uint16_t x, uint16_t y); // Read one character from character memory (x=0..29, y=0..12 (NTSC) or 0..15 (PAL))
 
+    void disableDisplay(); // disable OSD display
+    void enableDisplay(); // enable OSD display + black level control
 
     /* the following functions set the default mode bits for incremental mode printing of the MAX7456. */
     void blink(byte onoff);

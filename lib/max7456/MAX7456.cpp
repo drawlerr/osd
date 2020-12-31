@@ -40,6 +40,7 @@ byte MAX7456::MAX7456_spi_transfer(volatile char data) {
     SPCR = MAX7456_previous_SPCR;
     return SPDR;                    // return the received byte
 }
+
 void MAX7456::writeCharLinepos(uint8_t c, uint16_t linepos) {
     Poke(DMM_WRITE_ADDR, _char_attributes | 0x40); // enter 8 bit mode, no increment mode
     Poke(DMAH_WRITE_ADDR, linepos>>8); // As linepos cannot be larger than 480, this will clear bit 1, which means we write character index and not the attributes
@@ -57,17 +58,17 @@ void MAX7456::writeCharLinepos(uint8_t c, uint16_t linepos) {
   - initialize
   - offset
 ------------------------------------------------------------------------------ */
-void MAX7456::Poke(byte adress, byte data) {
+void MAX7456::Poke(byte address, byte data) {
     digitalWrite(MAX7456SELECT,LOW);
-    MAX7456_spi_transfer(adress);
+    MAX7456_spi_transfer(address);
     MAX7456_spi_transfer(data);
     digitalWrite(MAX7456SELECT,HIGH);
 }
 
-byte MAX7456::Peek(byte adress) {
+byte MAX7456::Peek(byte address) {
     byte retval=0;
     digitalWrite(MAX7456SELECT,LOW);
-    MAX7456_spi_transfer(adress);
+    MAX7456_spi_transfer(address);
     retval=MAX7456_spi_transfer(0xff);
     digitalWrite(MAX7456SELECT,HIGH);
     return(retval);
@@ -82,7 +83,7 @@ void MAX7456::begin(byte slave_select) {
 void MAX7456::reset() {
     Poke(VM0_WRITE_ADDR, MAX7456_reset); // soft reset
     delay(1); // datasheet: after 100 us, STAT[6] can be polled to verify that the reset process is complete
-    while (Peek(0xA0) & (1<<6)) ; // wait for RESET bit to be cleared
+    while (Peek(VM0_READ_ADDR) & (1<<1)) delay(1); // wait for RESET bit to be cleared
     initialize();
 }
 
@@ -101,7 +102,6 @@ void MAX7456::initialize() {
 }
 
 void MAX7456::begin() {
-    uint8_t x;
     // uint8_t spi_junk;
 
     pinMode(_slave_select,OUTPUT);
@@ -215,6 +215,8 @@ void MAX7456::writeCharWithAttributes(uint8_t c, uint8_t attributes) {
 void MAX7456::writeString(const char c[]) {
     uint16_t i=0;
     uint16_t linepos = _cursor_y * 30 + _cursor_x; // convert x,y to line position
+
+    //disableDisplay();
     Poke(DMAH_WRITE_ADDR, linepos>>8); // As linepos cannot be larger than 480, this will clear bit 1, which means we write character index and not the attributes
     Poke(DMAL_WRITE_ADDR, linepos&0xFF);
 
@@ -230,6 +232,7 @@ void MAX7456::writeString(const char c[]) {
     digitalWrite(MAX7456SELECT,LOW); MAX7456_spi_transfer(0xFF); digitalWrite(MAX7456SELECT,HIGH);
 
     Poke(DMM_WRITE_ADDR, _char_attributes | 0x40);   // back to 8 bit mode
+    //enableDisplay();
 }
 
 // basic, slow writeString method. Honors CURSOR_X_MIN.
@@ -273,7 +276,20 @@ byte MAX7456::ReadDisplay(uint16_t x, uint16_t y) {
     return(c);
 }
 
+void MAX7456::disableDisplay() {
+    int8_t vm0 = Peek(VM0_READ_ADDR);
+    vm0 &= 0xf7;
+    Poke(VM0_WRITE_ADDR, vm0);
+}
 
+void MAX7456::enableDisplay() {
+    int8_t vm0 = Peek(VM0_READ_ADDR);
+    int8_t osdbl = Peek(OSDBL_READ_ADDR);
+    vm0 |= 0x80;
+    osdbl |= 0x10;
+    Poke(VM0_WRITE_ADDR, vm0);
+    Poke(OSDBL_WRITE_ADDR, osdbl);
+}
 
 
 

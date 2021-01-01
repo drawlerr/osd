@@ -17,9 +17,10 @@ void setup() {
     Serial.setTimeout(SERIAL_TIMEOUT);
     wdt_enable(WDTO_8S);
     Serial.begin(OSD_BAUD);
-    Serial.println("OSD_INIT");
+    Serial.println(F("OSD_INIT"));
     maxosd.begin();
     maxosd.initialize();
+    maxosd.offset(OSD_H_OFFSET, OSD_V_OFFSET);
 }
 
 int8_t set_cursor(char * cmdbuf) {
@@ -59,6 +60,7 @@ void loop() {
      */
     int8_t retcode = 0;
     switch (cmd_buf[0]) {
+        //MAX7456 OSD functions
         case 'p':  // 'print'
             maxosd.writeStringSlow(&cmd_buf[1]);
             break;
@@ -71,12 +73,6 @@ void loop() {
         case 'i':
             maxosd.invert_toggle();
             break;
-        case 'e': // 'echo' / serial test
-            Serial.write(&cmd_buf[1]);
-            break;
-        case 'm': // 'millis' / uptime
-            Serial.print(millis(), DEC);
-            break;
         case 's': // status
             Serial.print(maxosd.Peek(0xa0), HEX);
             break;
@@ -85,6 +81,13 @@ void loop() {
             break;
         case 'c':
             maxosd.clear();
+            break;
+        // serial debug functions
+        case 'e': // 'echo' / serial test
+            Serial.write(&cmd_buf[1]);
+            break;
+        case 'm': // 'millis' / uptime
+            Serial.print(millis(), DEC);
             break;
         default:
             retcode = 0xff;

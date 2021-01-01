@@ -12,22 +12,8 @@
 #define MAX7456_h
 
 #include <Arduino.h>
+#include <SPI.h>
 
-
-// this is for Arduino Uno
-#define MAX7456_DATAOUT MOSI
-#define MAX7456_DATAIN  MISO
-#define MAX7456_SCK  SCK
-#define MAX7456SELECT SS
-#define MAX7456_VSYNC 5// INT0, not used
-/*
-// this is for 2560
-#define MAX7456_DATAOUT 51//MOSI
-#define MAX7456_DATAIN  50//MISO
-#define MAX7456_SCK  52//sck
-#define MAX7456SELECT 9//pin 9 (one of the motor pwm, used for octo only)
-//#define SS 53 // SS pin of the 2560
-*/
 
 //MAX7456 register addresses
 #define DMM_WRITE_ADDR   0x04
@@ -58,6 +44,7 @@
 // There is no DMDO write address
 #define DMDO_READ_ADDR 0xB0
 #define STAT_READ_ADDR 0xA0
+// no STAT write address
 #define OSDBL_READ_ADDR 0xEC
 #define OSDBL_WRITE_ADDR 0x6C
 
@@ -116,10 +103,10 @@
 #define ENABLE_display_vert 0x0c
 #define MAX_screen_size 390
 #define MAX_screen_rows 13
-#define CURSOR_X_MIN 2
+#define CURSOR_X_MIN 1
 #define CURSOR_X_MAX 29
 #define CURSOR_Y_MIN 0
-#define CURSOR_Y_MAX 13
+#define CURSOR_Y_MAX 12
 #endif
 
 // with PAL
@@ -146,7 +133,6 @@ public:
     void reset();                         // make a soft reset of the MAX7456, wait until completed, return
     void initialize();                    // initialize default values of the MAX7456 like PAL mode, 16 bit mode, autoincrement, backgnd brightness...
     void begin();                         // initializer: call this once before using the MAX7456. Does the pinModes of the SPI, calls reset()...
-    void begin(byte slave_select);        // initializer: set the slave_select pin not to MAX7456SELECT constant, but to the variable slave_select
     void offset(int horizontal, int vertical);  // set the horizontal (-32..31)/vertical (-16..15) offset in pixel. This is where the upper left corner is.
 
     void clear();                         // clears screen and sets cursor home
@@ -174,11 +160,10 @@ public:
     void invert(byte onoff);
 
 private:
-    byte MAX7456_spi_transfer(char data); // shift 8 bit "data" via SPI to the MAX7456 and return its 8 bit response during the same 8 bit shift. Does not set chip select.
+    byte MAX7456_spi_transfer(byte data); // shift 8 bit "data" via SPI to the MAX7456 and return its 8 bit response during the same 8 bit shift. Does not set chip select.
     void writeCharLinepos(uint8_t c, uint16_t linepos);  // writes character byte "c" to position "linepos" (0=left upper edge)
 
     byte MAX7456_SPCR, MAX7456_previous_SPCR; // store the desired and previous SPCR register of the Atmega
-    byte _slave_select; // Atmega pin that is connected to MAX7456 chip select
     byte _char_attributes; // standard character attributes if we do not set any
     byte _cursor_x, _cursor_y; // cursor position in character memory (x=0..29, y=0..15 or 0..12)
 };

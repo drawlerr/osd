@@ -13,7 +13,6 @@
 
 // Constructor
 MAX7456::MAX7456() {
-    _slave_select = MAX7456SELECT;
     _char_attributes = 0x02;
     _cursor_x = CURSOR_X_MIN;
     _cursor_y = CURSOR_Y_MIN;
@@ -31,14 +30,10 @@ MAX7456::MAX7456() {
 // over SPI. MAX7456_spi_transfer does NOT set chip select, so it is a bit of
 // a misnomer: it will do SPI data transfer with whatever SPI device is connected
 // and which has its CS set active.
-byte MAX7456::MAX7456_spi_transfer(volatile char data) {
-    MAX7456_previous_SPCR = SPCR;  // save SPCR, so we play nice with other SPI peripherals
-    SPCR = MAX7456_SPCR;  // set SPCR to what we need
+SPISettings spi_settings;
 
-    SPDR = data;                    // Start the transmission
-    while (!(SPSR & (1<<SPIF))) ;   // Wait the end of the transmission
-    SPCR = MAX7456_previous_SPCR;
-    return SPDR;                    // return the received byte
+byte MAX7456::MAX7456_spi_transfer(volatile byte data) {
+    return SPIClass::transfer(data);
 }
 
 void MAX7456::writeCharLinepos(uint8_t c, uint16_t linepos) {
@@ -58,25 +53,22 @@ void MAX7456::writeCharLinepos(uint8_t c, uint16_t linepos) {
   - initialize
   - offset
 ------------------------------------------------------------------------------ */
+
+
 void MAX7456::Poke(byte address, byte data) {
-    digitalWrite(MAX7456SELECT,LOW);
+    SPIClass::beginTransaction(spi_settings);
     MAX7456_spi_transfer(address);
     MAX7456_spi_transfer(data);
-    digitalWrite(MAX7456SELECT,HIGH);
+    SPIClass::endTransaction();
 }
 
 byte MAX7456::Peek(byte address) {
     byte retval=0;
-    digitalWrite(MAX7456SELECT,LOW);
+    SPIClass::beginTransaction(spi_settings);
     MAX7456_spi_transfer(address);
     retval=MAX7456_spi_transfer(0xff);
-    digitalWrite(MAX7456SELECT,HIGH);
+    SPIClass::endTransaction();
     return(retval);
-}
-
-void MAX7456::begin(byte slave_select) {
-    _slave_select = slave_select;
-    begin();
 }
 
 // do a soft reset of the MAX7456
@@ -102,30 +94,9 @@ void MAX7456::initialize() {
 }
 
 void MAX7456::begin() {
-    // uint8_t spi_junk;
-
-    pinMode(_slave_select,OUTPUT);
-    digitalWrite(_slave_select,HIGH); //disable device
-    pinMode(MAX7456_DATAOUT, OUTPUT);
-    pinMode(MAX7456_DATAIN, INPUT);
-    pinMode(MAX7456_SCK,OUTPUT);
-
-    MAX7456_SPCR = (0<<SPIE)|(1<<SPE)|(0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)|(0<<SPR1)|(0<<SPR0);
-    // configure SPI device on the microcontroller
-    // SPIF - SPI interrupt flag
-    // WCOL - write collision flag
-    // SPI2X - double speed SPI flag
-    // SPR1,0 - clock divider (we have a 16 MHz clock on our ATmega). If 00, divide by 4. If 01, by 16. If 10, by 64. If 11, by 128.
-    MAX7456_previous_SPCR = SPCR;  // save SPCR, so we play nice with other SPI peripherals
-    SPCR = MAX7456_SPCR;
-    SPSR = (0<<SPIF)|(0<<WCOL)|(0<<SPI2X);
-    //spi_junk=SPSR;spi_junk=SPDR;delay(25); // do we really need that? TK TODO
-
+    SPIClass::begin();
     // now configure the MAX7456
     reset();
-
-    // we are done, restore SPI interface in case other peripherals are using it too
-    SPCR = MAX7456_previous_SPCR;   // restore SPCR
 }
 
 
@@ -223,13 +194,15 @@ void MAX7456::writeString(const char c[]) {
     Poke(DMM_WRITE_ADDR, _char_attributes | 0x01); // enter 16 bit mode and auto increment mode
 
     // the i<480 is for safety, if the user gives us a string without zero at the end
+    SPIClass::beginTransaction(spi_settings);
     while(c[i] != 0 && i < 480) {
-        digitalWrite(MAX7456SELECT,LOW); MAX7456_spi_transfer(c[i]); digitalWrite(MAX7456SELECT,HIGH);
+        MAX7456_spi_transfer(c[i]);
         advanceCursor();
         i++;
     }
     // send 0xFF to end the auto-increment mode
-    digitalWrite(MAX7456SELECT,LOW); MAX7456_spi_transfer(0xFF); digitalWrite(MAX7456SELECT,HIGH);
+    MAX7456_spi_transfer(0xFF);
+    SPIClass::endTransaction();
 
     Poke(DMM_WRITE_ADDR, _char_attributes | 0x40);   // back to 8 bit mode
     //enableDisplay();

@@ -22,11 +22,16 @@ void setup() {
     maxosd.initialize();
 }
 
-void set_cursor(char * cmdbuf) {
+int8_t set_cursor(char * cmdbuf) {
     char * pcmd = cmdbuf;
-    int8_t x = int_arg(&pcmd);
-    int8_t y = int_arg(&pcmd);
-    maxosd.setCursor(x, y);
+    int8_t row = int_arg(&pcmd);
+    int8_t col = int_arg(&pcmd);
+    if (col <CURSOR_X_MIN || col > CURSOR_X_MAX ||
+        row <CURSOR_Y_MIN || row > CURSOR_Y_MAX) {
+        return 0xff;
+    }
+    maxosd.setCursor(col, row);
+    return 0;
 }
 
 void loop() {
@@ -55,10 +60,10 @@ void loop() {
     int8_t retcode = 0;
     switch (cmd_buf[0]) {
         case 'p':  // 'print'
-            maxosd.writeString(&cmd_buf[1]);
+            maxosd.writeStringSlow(&cmd_buf[1]);
             break;
         case 'l': // 'locate'
-            set_cursor(&cmd_buf[1]);
+            retcode = set_cursor(&cmd_buf[1]);
             break;
         case 'e': // 'echo' / serial test
             Serial.write(&cmd_buf[1]);

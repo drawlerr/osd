@@ -65,23 +65,20 @@ void loop() {
         case 'l': // 'locate'
             retcode = set_cursor(&cmd_buf[1]);
             break;
+        case 'b':
+            maxosd.blink_toggle();
+            break;
+        case 'i':
+            maxosd.invert_toggle();
+            break;
         case 'e': // 'echo' / serial test
             Serial.write(&cmd_buf[1]);
             break;
-        case 'h': // 'heartbeat' / no-op
-            break;
         case 'm': // 'millis' / uptime
             Serial.print(millis(), DEC);
-            //retcode = millis();
             break;
         case 's': // status
             Serial.print(maxosd.Peek(0xa0), HEX);
-            //retcode = maxosd.Peek(STAT_READ_ADDR);
-            break;
-        case 'v': // vm0+vm1 video mode
-            Serial.print(maxosd.Peek(VM0_READ_ADDR), HEX);
-            Serial.write(' ');
-            Serial.print(maxosd.Peek(VM1_READ_ADDR), HEX);
             break;
         case 'r':
             maxosd.reset();

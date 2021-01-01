@@ -101,7 +101,7 @@ void MAX7456::begin() {
 
 
 
-// Adjust the horizontal and vertical offet
+// Adjust the horizontal and vertical offset
 // Horizontal offset between -32 and +31
 // Vertical offset between -15 and +16
 void MAX7456::offset(int horizontal, int vertical) {
@@ -263,6 +263,16 @@ void MAX7456::enableDisplay() {
     Poke(VM0_WRITE_ADDR, vm0);
     Poke(OSDBL_WRITE_ADDR, osdbl);
 }
+
+void MAX7456::blink_toggle() {
+    _char_attributes ^= 0x10;
+}
+
+void MAX7456::invert_toggle() {
+    _char_attributes ^= ~0x08;
+}
+
+
 
 
 

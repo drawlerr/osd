@@ -259,17 +259,17 @@ void MAX7456::enableDisplay() {
     int8_t vm0 = Peek(VM0_READ_ADDR);
     int8_t osdbl = Peek(OSDBL_READ_ADDR);
     vm0 |= 0x80;
-    osdbl |= 0x10;
+    osdbl &= ~0x10;
     Poke(VM0_WRITE_ADDR, vm0);
     Poke(OSDBL_WRITE_ADDR, osdbl);
 }
 
-void MAX7456::blink_toggle() {
-    _char_attributes ^= 0x10;
-}
-
-void MAX7456::invert_toggle() {
-    _char_attributes ^= ~0x08;
+void MAX7456::display(byte onoff) {
+    if (onoff) {
+        enableDisplay();
+    } else {
+        disableDisplay();
+    }
 }
 
 

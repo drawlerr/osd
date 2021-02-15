@@ -157,9 +157,8 @@ public:
 
     /* the following functions set the default mode bits for incremental mode printing of the MAX7456. */
     void blink(byte onoff);
-    void blink_toggle();
     void invert(byte onoff);
-    void invert_toggle();
+    void display(byte onoff);
 
 private:
     byte MAX7456_spi_transfer(byte data); // shift 8 bit "data" via SPI to the MAX7456 and return its 8 bit response during the same 8 bit shift. Does not set chip select.

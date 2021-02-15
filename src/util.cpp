@@ -1,6 +1,11 @@
 #include <errno.h>
 #include <limits.h>
 
+// AVR LIBC gives this a junk value because they didn't want to waste storage on a string
+// we need to redefine to a sane one
+#undef EILSEQ
+#define EILSEQ 35
+
 
 long long_arg(char ** strp) {
     char * pstr = *strp;
@@ -21,8 +26,12 @@ long long_arg(char ** strp) {
                 errno = EILSEQ;
                 break;
             }
-        } else if (c == ' ' && sign == 0) {
-            continue;
+        } else if (c == ' ' || c == '\n') {
+            if (sign == 0) {
+                continue;
+            } else {
+                break;
+            }
         } else {
             errno = EILSEQ;
             break;
@@ -36,9 +45,12 @@ long long_arg(char ** strp) {
 
 int int_arg(char ** strp) {
     long val = long_arg(strp);
+    if (errno) {
+        return INT_MAX;
+    }
     if (val < INT_MIN || val > INT_MAX) {
         errno = ERANGE;
-        return 0;
+        return INT_MAX;
     }
     return (int) val;
 }

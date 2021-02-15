@@ -2,6 +2,7 @@
 #include "util.h"
 #include "MAX7456.h"
 #include <avr/wdt.h>
+#include "errno.h"
 
 
 #ifdef DEBUG
@@ -17,21 +18,68 @@ void setup() {
     Serial.setTimeout(SERIAL_TIMEOUT);
     wdt_enable(WDTO_8S);
     Serial.begin(OSD_BAUD);
-    Serial.println(F("OSD_INIT"));
+    Serial.print(F("OSD_INIT"));
+    Serial.write(0);
     maxosd.begin();
     maxosd.initialize();
     maxosd.offset(OSD_H_OFFSET, OSD_V_OFFSET);
 }
 
-int8_t set_cursor(char * cmdbuf) {
+int set_cursor(char * cmdbuf) {
     char * pcmd = cmdbuf;
-    int8_t row = int_arg(&pcmd);
-    int8_t col = int_arg(&pcmd);
-    if (col <CURSOR_X_MIN || col > CURSOR_X_MAX ||
-        row <CURSOR_Y_MIN || row > CURSOR_Y_MAX) {
-        return 0xff;
+    int8_t x = int_arg(&pcmd);
+    if (errno) {
+        return errno;
     }
-    maxosd.setCursor(col, row);
+    int8_t y = int_arg(&pcmd);
+    if (errno) {
+        return errno;
+    }
+    if (x < CURSOR_X_MIN || x > CURSOR_X_MAX ||
+        y < CURSOR_Y_MIN || y > CURSOR_Y_MAX) {
+        Serial.printf(F("ERANGE: x=%d, y=%d"), x, y);
+        return ERANGE;
+    }
+    maxosd.setCursor(x, y);
+    return 0;
+}
+
+int set_offset(char * cmdbuf) {
+    char * pcmd = cmdbuf;
+    int8_t x = int_arg(&pcmd);
+    if (errno) {
+        return errno;
+    }
+    int8_t y = int_arg(&pcmd);
+    if (errno) {
+        return errno;
+    }
+
+    maxosd.offset(x, y);
+    return 0;
+}
+
+
+int set_attr(char * cmdbuf) {
+    char attr = cmdbuf[0];
+    char * pcmd = &cmdbuf[1];
+    int8_t enable = int_arg(&pcmd);
+    if (errno) {
+        return errno;
+    }
+    switch (attr) {
+        case 'b':
+            maxosd.blink(enable);
+            break;
+        case 'i':
+            maxosd.invert(enable);
+            break;
+        case 'd':
+            maxosd.display(enable);
+            break;
+        default:
+            return EDOM;
+    }
     return 0;
 }
 
@@ -57,24 +105,28 @@ void loop() {
      * l x y - locate cursor to screen offset
      * r - reset
      * c - clear
+     * a (attr) [0|1] - set boolean attribute
      */
-    int8_t retcode = 0;
+    int retcode = 0;
     switch (cmd_buf[0]) {
         //MAX7456 OSD functions
         case 'p':  // 'print'
             maxosd.writeStringSlow(&cmd_buf[1]);
             break;
-        case 'l': // 'locate'
+        case 'P':  // 'print'
+            maxosd.writeString(&cmd_buf[1]);
+            break;
+        case 'l': // 'locate x y'
             retcode = set_cursor(&cmd_buf[1]);
             break;
-        case 'b':
-            maxosd.blink_toggle();
-            break;
-        case 'i':
-            maxosd.invert_toggle();
+        case 'a':
+            retcode = set_attr(&cmd_buf[1]);
             break;
         case 's': // status
-            Serial.print(maxosd.Peek(0xa0), HEX);
+            Serial.print(maxosd.Peek(STAT_READ_ADDR), HEX);
+            break;
+        case 'o':
+            retcode = set_offset(&cmd_buf[1]);
             break;
         case 'r':
             maxosd.reset();
